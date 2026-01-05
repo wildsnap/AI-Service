@@ -1,5 +1,6 @@
 import io
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Dict
 
@@ -8,13 +9,6 @@ import torchvision.transforms as transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from PIL import Image
 from torchvision.models import resnet18
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="AI Image Classification Service",
-    description="PyTorch-based image classification microservice",
-    version="1.0.0"
-)
 
 # Global variables for model and class labels
 model = None
@@ -62,15 +56,30 @@ def load_class_labels():
     print(f"Loaded {len(class_labels)} class labels")
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize model and labels on startup."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup: Initialize model and labels
     try:
         load_model()
         load_class_labels()
     except Exception as e:
         print(f"Warning: {str(e)}")
         print("Server started but model may not be available.")
+    
+    yield
+    
+    # Shutdown: cleanup if needed
+    print("Shutting down...")
+
+
+# Initialize FastAPI app with lifespan
+app = FastAPI(
+    title="AI Image Classification Service",
+    description="PyTorch-based image classification microservice",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 
 @app.get("/")
@@ -150,10 +159,10 @@ async def predict(file: UploadFile = File(...)) -> Dict:
         # Perform inference
         with torch.no_grad():
             outputs = model(input_tensor)
-            probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
+            probabilities = torch.nn.functional.softmax(outputs, dim=1)
             
             # Get top prediction
-            confidence, class_id = torch.max(probabilities, dim=0)
+            confidence, class_id = torch.max(probabilities, dim=1)
             
             class_id = class_id.item()
             confidence = confidence.item()
