@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Dict
@@ -9,6 +10,10 @@ import torchvision.transforms as transforms
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from PIL import Image
 from torchvision.models import resnet18
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Global variables for model and class labels
 model = None
@@ -33,7 +38,7 @@ def load_model():
         state_dict = torch.load(model_path, map_location=torch.device('cpu'))
         model.load_state_dict(state_dict)
         model.eval()
-        print("Model loaded successfully from model.pth")
+        logger.info("Model loaded successfully from model.pth")
     except Exception as e:
         raise RuntimeError(f"Failed to load model weights: {str(e)}")
 
@@ -53,7 +58,7 @@ def load_class_labels():
         # Default to indices if labels file doesn't exist
         class_labels = {str(i): f"class_{i}" for i in range(1000)}
     
-    print(f"Loaded {len(class_labels)} class labels")
+    logger.info(f"Loaded {len(class_labels)} class labels")
 
 
 @asynccontextmanager
@@ -64,13 +69,13 @@ async def lifespan(app: FastAPI):
         load_model()
         load_class_labels()
     except Exception as e:
-        print(f"Warning: {str(e)}")
-        print("Server started but model may not be available.")
+        logger.warning(f"Warning: {str(e)}")
+        logger.warning("Server started but model may not be available.")
     
     yield
     
     # Shutdown: cleanup if needed
-    print("Shutting down...")
+    logger.info("Shutting down...")
 
 
 # Initialize FastAPI app with lifespan
@@ -159,13 +164,14 @@ async def predict(file: UploadFile = File(...)) -> Dict:
         # Perform inference
         with torch.no_grad():
             outputs = model(input_tensor)
+            
+            # Get top prediction (softmax not needed for finding argmax)
+            confidence, class_id = torch.max(outputs, dim=1)
+            
+            # Apply softmax to get probability
             probabilities = torch.nn.functional.softmax(outputs, dim=1)
-            
-            # Get top prediction
-            confidence, class_id = torch.max(probabilities, dim=1)
-            
+            confidence = probabilities[0, class_id].item()
             class_id = class_id.item()
-            confidence = confidence.item()
         
         # Get class name
         class_name = class_labels.get(str(class_id), f"class_{class_id}")
