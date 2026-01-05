@@ -105,6 +105,17 @@ Classify an uploaded image.
 
 ### Example Usage
 
+#### Using the Test Script (Recommended):
+```bash
+# Download a sample image (or use your own)
+curl "https://raw.githubusercontent.com/pytorch/hub/master/images/dog.jpg" -o dog.jpg
+
+# Run the test script
+python test_api.py dog.jpg
+```
+
+The test script will check the health endpoint and then classify the image, displaying results in a user-friendly format.
+
 #### Using cURL:
 ```bash
 curl -X POST "http://localhost:8000/predict" \
@@ -137,6 +148,7 @@ AI-Service/
 ├── main.py                    # FastAPI application
 ├── download_model.py          # Script to download pre-trained model
 ├── download_labels.py         # Script to download ImageNet labels
+├── test_api.py                # Test script to validate API functionality
 ├── requirements.txt           # Python dependencies
 ├── model.pth                  # Pre-trained model weights (generated)
 ├── imagenet_classes.json      # ImageNet class labels (generated)
