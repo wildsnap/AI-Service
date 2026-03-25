@@ -6,3 +6,4 @@ pillow
 python-multipart
 requests
 opencv-python-headless
+ultralytics

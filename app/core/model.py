@@ -5,7 +5,7 @@ from torchvision import models
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-MODEL_PATH = BASE_DIR / "model" / "wildsnap_model_v4.pth" 
+MODEL_PATH = BASE_DIR / "model" / "wildsnap_model_v5.pth" 
 NUM_CLASSES = 28
 
 def load_model():
